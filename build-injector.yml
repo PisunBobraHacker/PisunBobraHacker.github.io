@@ -1,0 +1,30 @@
+name: Build Injector (Rust)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: aarch64-linux-android
+          override: true
+
+      - name: Build injector
+        run: cargo build --release --target aarch64-linux-android
+
+      - name: Upload artifacts (injector + libexecutor.so)
+        uses: actions/upload-artifact@v4
+        with:
+          name: executor-package
+          path: |
+            target/aarch64-linux-android/release/injector
+            libexecutor.so
