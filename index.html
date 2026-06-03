@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Xeno Web Executor</title>
+    <style>
+        body {
+            background: #0a0a0a;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: #1e1e1e;
+            border-radius: 20px;
+            padding: 25px;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
+            border: 1px solid #ff69b4;
+        }
+        h1 {
+            text-align: center;
+            color: #ff69b4;
+            margin-top: 0;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            background: #2a2a2a;
+            border: 1px solid #ff69b4;
+            color: #fff;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+        button {
+            background: #ff69b4;
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #ff3388;
+            box-shadow: 0 0 10px #ff69b4;
+        }
+        .status {
+            background: #000;
+            padding: 8px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #ff69b4;
+            border: 1px solid #ff69b4;
+        }
+        .status span {
+            color: #00ff00;
+        }
+        footer {
+            text-align: center;
+            font-size: 12px;
+            margin-top: 20px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>⚡ XENO WEB EXECUTOR</h1>
+    <div class="status" id="status">🔌 Connecting to executor... <span id="wsState">connecting</span></div>
+    <textarea id="scriptInput" placeholder="-- Введи свой Lua скрипт здесь
+print('Hello, Roblox!')"></textarea>
+    <button id="executeBtn">🚀 EXECUTE</button>
+    <footer>WebSocket → localhost:8081 | Инжектор должен быть запущен</footer>
+</div>
+
+<script>
+    let ws = null;
+    const statusSpan = document.getElementById('wsState');
+
+    function connectWebSocket() {
+        ws = new WebSocket('ws://localhost:8081');
+        ws.onopen = () => {
+            statusSpan.textContent = 'connected';
+            statusSpan.style.color = '#00ff00';
+        };
+        ws.onclose = () => {
+            statusSpan.textContent = 'disconnected';
+            statusSpan.style.color = '#ff4444';
+            setTimeout(connectWebSocket, 3000);
+        };
+        ws.onerror = (err) => {
+            console.error('WebSocket error', err);
+            statusSpan.textContent = 'error';
+        };
+    }
+
+    connectWebSocket();
+
+    document.getElementById('executeBtn').onclick = () => {
+        const script = document.getElementById('scriptInput').value;
+        if (!script.trim()) {
+            alert('Введи скрипт!');
+            return;
+        }
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            alert('Нет соединения с executor (WebSocket closed). Убедись, что инжектор запущен и libexecutor.so внедрена.');
+            return;
+        }
+        // Отправляем JSON с шифрованным скриптом (просто XOR, можно позже усложнить)
+        const payload = JSON.stringify({ script: script });  // executor.so расшифрует XOR с ключом 0xAA
+        ws.send(payload);
+        console.log('Script sent');
+    };
+</script>
+</body>
+</html>
