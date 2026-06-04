@@ -3,130 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Xeno Web Executor</title>
+    <title>XENO WEB EXECUTOR</title>
     <style>
+        * { box-sizing: border-box; }
         body {
             background: #0a0a0a;
-            color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', system-ui;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             padding: 20px;
         }
-        .container {
-            background: #1e1e1e;
-            border-radius: 20px;
-            padding: 25px;
+        .card {
+            background: #111;
+            border-radius: 28px;
+            max-width: 700px;
             width: 100%;
-            max-width: 600px;
-            box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
-            border: 1px solid #ff69b4;
+            padding: 24px;
+            border: 1px solid #ff66cc;
+            box-shadow: 0 0 20px rgba(255,102,204,0.2);
         }
-        h1 {
-            text-align: center;
-            color: #ff69b4;
-            margin-top: 0;
+        h1 { color: #ff66cc; text-align: center; margin-top: 0; }
+        .status-bar {
+            background: #1e1e1e;
+            border-radius: 40px;
+            padding: 8px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
         }
         textarea {
             width: 100%;
-            height: 200px;
-            background: #2a2a2a;
-            border: 1px solid #ff69b4;
-            color: #fff;
-            border-radius: 10px;
-            padding: 15px;
+            height: 220px;
+            background: #1a1a1a;
+            border: 1px solid #ff66cc;
+            border-radius: 20px;
+            padding: 16px;
+            color: #eee;
             font-family: monospace;
             font-size: 14px;
             resize: vertical;
         }
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
         button {
-            background: #ff69b4;
-            color: #000;
+            flex: 1;
+            background: #ff66cc;
             border: none;
-            padding: 12px 20px;
-            border-radius: 30px;
-            font-size: 18px;
+            padding: 12px;
+            border-radius: 40px;
             font-weight: bold;
-            width: 100%;
-            margin-top: 15px;
             cursor: pointer;
-            transition: 0.2s;
         }
-        button:hover {
-            background: #ff3388;
-            box-shadow: 0 0 10px #ff69b4;
+        button.secondary {
+            background: #333;
+            color: #ff66cc;
+            border: 1px solid #ff66cc;
         }
-        .status {
-            background: #000;
-            padding: 8px;
-            border-radius: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-            font-size: 14px;
-            color: #ff69b4;
-            border: 1px solid #ff69b4;
+        .info {
+            font-size: 0.75rem;
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 16px;
+            margin-top: 16px;
+            color: #aaa;
         }
-        .status span {
-            color: #00ff00;
-        }
-        footer {
-            text-align: center;
-            font-size: 12px;
-            margin-top: 20px;
-            color: #888;
-        }
+        .info span { color: #ff66cc; }
     </style>
 </head>
 <body>
-<div class="container">
+<div class="card">
     <h1>⚡ XENO WEB EXECUTOR</h1>
-    <div class="status" id="status">🔌 Connecting to executor... <span id="wsState">connecting</span></div>
-    <textarea id="scriptInput" placeholder="-- Введи свой Lua скрипт здесь
-print('Hello, Roblox!')"></textarea>
-    <button id="executeBtn">🚀 EXECUTE</button>
-    <footer>WebSocket → localhost:8081 | Инжектор должен быть запущен</footer>
+    <div class="status-bar">
+        <span>🔌 WebSocket</span>
+        <span id="wsStatus">Disconnected</span>
+    </div>
+    <textarea id="scriptInput" placeholder='-- Lua скрипт&#10;print("Hello from Web Executor!")'></textarea>
+    <div class="button-group">
+        <button id="executeBtn">🚀 EXECUTE (XOR crypt)</button>
+        <button id="dumpBtn" class="secondary">🔍 FORCE AUTO-DUMP</button>
+    </div>
+    <div class="info">
+        ⚡ <span>XOR шифрование (0xAA)</span> – скрипт шифруется перед отправкой.<br>
+        🔄 <span>Автодамп сигнатур</span> каждые 12 часов + по кнопке.<br>
+        🧠 <span>executor.so</span> слушает порт 8081 (WebSocket).
+    </div>
 </div>
 
 <script>
-    let ws = null;
-    const statusSpan = document.getElementById('wsState');
-
-    function connectWebSocket() {
-        ws = new WebSocket('ws://localhost:8081');
-        ws.onopen = () => {
-            statusSpan.textContent = 'connected';
-            statusSpan.style.color = '#00ff00';
-        };
-        ws.onclose = () => {
-            statusSpan.textContent = 'disconnected';
-            statusSpan.style.color = '#ff4444';
-            setTimeout(connectWebSocket, 3000);
-        };
-        ws.onerror = (err) => {
-            console.error('WebSocket error', err);
-            statusSpan.textContent = 'error';
-        };
+    function xorEncrypt(plain, key = 0xAA) {
+        let result = '';
+        for (let i = 0; i < plain.length; i++) {
+            result += String.fromCharCode(plain.charCodeAt(i) ^ key);
+        }
+        return result;
     }
 
+    let ws = null;
+    function connectWebSocket() {
+        ws = new WebSocket('ws://localhost:8081');
+        ws.onopen = () => document.getElementById('wsStatus').innerText = 'Connected';
+        ws.onclose = () => {
+            document.getElementById('wsStatus').innerText = 'Disconnected';
+            setTimeout(connectWebSocket, 3000);
+        };
+        ws.onerror = () => document.getElementById('wsStatus').innerText = 'Error';
+    }
     connectWebSocket();
 
     document.getElementById('executeBtn').onclick = () => {
         const script = document.getElementById('scriptInput').value;
-        if (!script.trim()) {
-            alert('Введи скрипт!');
-            return;
-        }
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            alert('Нет соединения с executor (WebSocket closed). Убедись, что инжектор запущен и libexecutor.so внедрена.');
-            return;
-        }
-        // Отправляем JSON с шифрованным скриптом (просто XOR, можно позже усложнить)
-        const payload = JSON.stringify({ script: script });  // executor.so расшифрует XOR с ключом 0xAA
-        ws.send(payload);
-        console.log('Script sent');
+        if (!script.trim()) return alert('Введи скрипт');
+        if (!ws || ws.readyState !== WebSocket.OPEN) return alert('Нет соединения с executor.so');
+        const encrypted = xorEncrypt(script, 0xAA);
+        ws.send(JSON.stringify({ action: 'execute', script: encrypted }));
+    };
+    document.getElementById('dumpBtn').onclick = () => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return alert('Нет соединения');
+        ws.send(JSON.stringify({ action: 'dump' }));
+        alert('Запрос на дамп отправлен');
     };
 </script>
 </body>
